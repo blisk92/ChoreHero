@@ -1,0 +1,1 @@
+A PWA App that gamify chores or tasks for children. Parents will be able to assign chores and tasks to their kids that will then reward them points upon completion. Those points can then be redeemed for rewards set by the parents with the equivalent points.
