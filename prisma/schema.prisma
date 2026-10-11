@@ -1,0 +1,284 @@
+// ChoreHero v1 — Prisma schema
+// Generator/provider pinned by the v1-01 task. MariaDB 11 is the runtime target.
+// Domain vocabulary MUST match CONTEXT.md exactly. See ADR-0001 for the rule
+// that the kid has no auth row: kid identity is KidDevice.device_token_hash.
+//
+// Per-field LWW: every updatable column on a mutable record carries its own
+// `*_updated_at` sibling column. The applyLww primitive writes a column only
+// when the incoming `updated_at` is strictly greater than the stored one.
+// Append-only tables (PointsLedger, Notification) carry created_at only.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Household — unit of data isolation. One parent, one child, N kid devices.
+// ---------------------------------------------------------------------------
+model Household {
+  id        String   @id @default(cuid())
+  name      String?
+  timezone  String   @default("UTC")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  parents       Parent[]
+  children      Child[]
+  kidDevices    KidDevice[]
+  householdCode HouseholdCode?
+  chores        Chore[]
+  rewards       Reward[]
+  redemptions   Redemption[]
+
+  @@map("household")
+}
+
+// ---------------------------------------------------------------------------
+// Parent — account holder. Email + password (bcrypt), optional OAuth subject.
+// v1: exactly one parent per household. A future second parent requires no
+// schema change — Household is the anchor.
+// ---------------------------------------------------------------------------
+model Parent {
+  id             String    @id @default(cuid())
+  householdId    String    @map("household_id")
+  email          String    @unique
+  passwordHash   String?   @map("password_hash")
+  oauthProvider  String?   @map("oauth_provider")
+  oauthSubject   String?   @map("oauth_subject")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  // Per-field LWW discipline on the only mutable column we expose for writes
+  // from the client side today (e.g. password rotation in v2). email is
+  // immutable post-signup; it carries no per-field updated_at.
+  name           String?
+  nameUpdatedAt  DateTime? @map("name_updated_at")
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
+  @@map("parent")
+}
+
+// ---------------------------------------------------------------------------
+// Child — a profile inside a household, NOT an account. ADR-0001.
+// ---------------------------------------------------------------------------
+model Child {
+  id          String   @id @default(cuid())
+  householdId String   @map("household_id")
+  name        String
+  // Per-field LWW: name is the only client-mutable column.
+  nameUpdatedAt DateTime? @map("name_updated_at")
+
+  avatarId    String   @map("avatar_id")
+  avatarIdUpdatedAt DateTime? @map("avatar_id_updated_at")
+
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  household    Household    @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  kidDevices   KidDevice[]
+  choresClaimed Chore[]     @relation("ChoreClaimedBy")
+  redemptions  Redemption[]
+  pointsLedger PointsLedger[]
+
+  @@index([householdId])
+  @@map("child")
+}
+
+// ---------------------------------------------------------------------------
+// KidDevice — the kid's identity (ADR-0001). No ChildAuth/ChildSession table.
+// device_token_hash is the credential the kid device presents on each request.
+// ---------------------------------------------------------------------------
+model KidDevice {
+  id                String    @id @default(cuid())
+  childId           String    @map("child_id")
+  householdId       String    @map("household_id")
+  deviceTokenHash   String    @unique @map("device_token_hash")
+  friendlyName      String    @map("friendly_name")
+
+  // Per-field LWW — friendly_name is the only client-mutable field on this
+  // table. The other timestamps are server-controlled and not replayed.
+  friendlyNameUpdatedAt DateTime? @map("friendly_name_updated_at")
+
+  installedAt       DateTime  @default(now()) @map("installed_at")
+  lastSeenAt        DateTime? @map("last_seen_at")
+  revokedAt         DateTime? @map("revoked_at")
+
+  child     Child     @relation(fields: [childId], references: [id], onDelete: Cascade)
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
+  @@index([childId])
+  @@map("kid_device")
+}
+
+// ---------------------------------------------------------------------------
+// HouseholdCode — lazy-generated, permanent, regenerable. Stores a hash; the
+// plaintext 6-char code lives only on the parent device that generated it.
+// ---------------------------------------------------------------------------
+model HouseholdCode {
+  householdId   String   @id @map("household_id")
+  codeHash      String   @map("code_hash")
+  // The un-hashable plaintext is never persisted.
+  createdAt     DateTime @default(now()) @map("created_at")
+  regeneratedAt DateTime? @map("regenerated_at")
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@map("household_code")
+}
+
+// ---------------------------------------------------------------------------
+// Chore — the unit of work. State machine lives entirely on Chore.status.
+// ---------------------------------------------------------------------------
+model Chore {
+  id                String   @id @default(cuid())
+  householdId       String   @map("household_id")
+  name              String
+  pointValue        Int      @map("point_value")
+  reviewFlagged     Boolean  @default(false) @map("review_flagged")
+  // kind: recurring | one_off
+  kind              String
+  dueAt             DateTime? @map("due_at")
+  // status: pool | claimed | completed | skipped | expired
+  status            String   @default("pool")
+
+  claimedByChildId   String?  @map("claimed_by_child_id")
+  claimedAt         DateTime? @map("claimed_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  archivedAt        DateTime? @map("archived_at")
+
+  // Per-field LWW — every client-mutable column carries its own updated_at.
+  nameUpdatedAt          DateTime? @map("name_updated_at")
+  pointValueUpdatedAt    DateTime? @map("point_value_updated_at")
+  reviewFlaggedUpdatedAt DateTime? @map("review_flagged_updated_at")
+  kindUpdatedAt          DateTime? @map("kind_updated_at")
+  dueAtUpdatedAt         DateTime? @map("due_at_updated_at")
+  statusUpdatedAt        DateTime? @map("status_updated_at")
+  claimedByChildIdUpdatedAt DateTime? @map("claimed_by_child_id_updated_at")
+  claimedAtUpdatedAt     DateTime? @map("claimed_at_updated_at")
+  archivedAtUpdatedAt    DateTime? @map("archived_at_updated_at")
+
+  household       Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  claimedByChild  Child?    @relation("ChoreClaimedBy", fields: [claimedByChildId], references: [id])
+  streak          Streak?
+
+  @@index([householdId, status])
+  @@index([householdId, kind, status])
+  @@map("chore")
+}
+
+// ---------------------------------------------------------------------------
+// Streak — denormalised projection on a recurring chore, keyed by chore_id.
+// ---------------------------------------------------------------------------
+model Streak {
+  choreId              String   @id @map("chore_id")
+  currentLength        Int      @default(0) @map("current_length")
+  longestLength        Int      @default(0) @map("longest_length")
+  lastCompletedOn      DateTime? @map("last_completed_on") @db.Date
+
+  // Per-field LWW — currentLength, longestLength, lastCompletedOn are the
+  // updatable columns. The reducer writes them on chore resolution.
+  currentLengthUpdatedAt   DateTime? @map("current_length_updated_at")
+  longestLengthUpdatedAt   DateTime? @map("longest_length_updated_at")
+  lastCompletedOnUpdatedAt DateTime? @map("last_completed_on_updated_at")
+
+  chore Chore @relation(fields: [choreId], references: [id], onDelete: Cascade)
+
+  @@map("streak")
+}
+
+// ---------------------------------------------------------------------------
+// Reward — catalog item set up by the parent. Permanent by default; optional
+// stock_remaining caps redemptions of tangible rewards.
+// ---------------------------------------------------------------------------
+model Reward {
+  id              String   @id @default(cuid())
+  householdId     String   @map("household_id")
+  name            String
+  pointCost       Int      @map("point_cost")
+  description     String?
+  stockRemaining  Int?     @map("stock_remaining")
+
+  // Per-field LWW — every mutable column carries its own updated_at.
+  nameUpdatedAt          DateTime? @map("name_updated_at")
+  pointCostUpdatedAt     DateTime? @map("point_cost_updated_at")
+  descriptionUpdatedAt   DateTime? @map("description_updated_at")
+  stockRemainingUpdatedAt DateTime? @map("stock_remaining_updated_at")
+
+  createdAt     DateTime @default(now()) @map("created_at")
+  redemptions   Redemption[]
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
+  @@map("reward")
+}
+
+// ---------------------------------------------------------------------------
+// Redemption — child's request to spend points on a reward. Always routes to
+// the parent for approval before points are deducted.
+// status: pending | approved | denied | reversed
+// ---------------------------------------------------------------------------
+model Redemption {
+  id            String    @id @default(cuid())
+  householdId   String    @map("household_id")
+  childId       String    @map("child_id")
+  rewardId      String    @map("reward_id")
+  status        String    @default("pending")
+  requestedAt   DateTime  @default(now()) @map("requested_at")
+  resolvedAt    DateTime? @map("resolved_at")
+  denialReason  String?   @map("denial_reason")
+
+  // Per-field LWW — only `status`, `resolvedAt`, `denialReason` are mutable
+  // post-creation (the parent's approval/denial/reversal).
+  statusUpdatedAt       DateTime? @map("status_updated_at")
+  resolvedAtUpdatedAt   DateTime? @map("resolved_at_updated_at")
+  denialReasonUpdatedAt DateTime? @map("denial_reason_updated_at")
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  child     Child     @relation(fields: [childId], references: [id], onDelete: Cascade)
+  reward    Reward    @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+
+  @@index([householdId, status])
+  @@map("redemption")
+}
+
+// ---------------------------------------------------------------------------
+// PointsLedger — append-only. Current balance is SUM(delta) per child.
+// source: chore | redemption | reversal
+// ---------------------------------------------------------------------------
+model PointsLedger {
+  id        String   @id @default(cuid())
+  childId   String   @map("child_id")
+  delta     Int
+  // source: chore | redemption | reversal
+  source    String
+  sourceId  String   @map("source_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  child Child @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@index([childId, createdAt])
+  @@map("points_ledger")
+}
+
+// ---------------------------------------------------------------------------
+// Notification — in-app, recipient can be a parent or a kid_device.
+// recipient_kind: parent | kid_device
+// ---------------------------------------------------------------------------
+model Notification {
+  id            String   @id @default(cuid())
+  recipientKind String   @map("recipient_kind")
+  recipientId   String   @map("recipient_id")
+  kind          String
+  payloadJson   Json     @map("payload_json")
+  readAt        DateTime? @map("read_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([recipientKind, recipientId, createdAt])
+  @@map("notification")
+}

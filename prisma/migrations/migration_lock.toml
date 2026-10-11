@@ -1,0 +1,2 @@
+# Lockfile — Prisma migration provider. v1 is MySQL/MariaDB; provider pinned.
+provider = "mysql"
