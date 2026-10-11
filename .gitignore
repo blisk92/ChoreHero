@@ -1,0 +1,25 @@
+# Node
+node_modules/
+**/node_modules/
+**/dist/
+
+# Env files (keep .env.example checked in)
+.env
+.env.*
+!.env.example
+
+# Worktrees
+/.worktrees/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Pre-built merge-review test fixtures (rebuilt by test_scenarios.py)
+/tools/merge-review/tests/fixtures/
+
+# merge-review runtime artifacts
+/tools/merge-review/__pycache__/
+/tools/merge-review/tests/__pycache__/
