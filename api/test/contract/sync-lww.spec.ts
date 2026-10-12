@@ -129,10 +129,18 @@ describe('POST /api/sync/apply (LWW)', () => {
   };
 
   function seedChore(): void {
-    execSync(
-      `docker exec ${containerId} mariadb -uroot -prootpw chorehero -e "INSERT INTO chore (id, household_id, name, point_value, kind, status, name_updated_at, point_value_updated_at, kind_updated_at, status_updated_at) VALUES ('${seededChore.id}', '${seededChore.householdId}', '${seededChore.name}', ${seededChore.pointValue}, '${seededChore.kind}', '${seededChore.status}', '2026-01-01 00:00:00', '2026-01-01 00:00:00', '2026-01-01 00:00:00', '2026-01-01 00:00:00')"`,
-      { stdio: 'pipe' },
-    );
+    if (process.env.CI === 'true') {
+      // In CI, use mysql CLI directly against the service container.
+      execSync(
+        `mysql -h 127.0.0.1 -uroot -prootpw chorehero -e "INSERT INTO chore (id, household_id, name, point_value, kind, status, name_updated_at, point_value_updated_at, kind_updated_at, status_updated_at) VALUES ('${seededChore.id}', '${seededChore.householdId}', '${seededChore.name}', ${seededChore.pointValue}, '${seededChore.kind}', '${seededChore.status}', '2026-01-01 00:00:00', '2026-01-01 00:00:00', '2026-01-01 00:00:00', '2026-01-01 00:00:00')"`,
+        { stdio: 'pipe' },
+      );
+    } else {
+      execSync(
+        `docker exec ${containerId} mariadb -uroot -prootpw chorehero -e "INSERT INTO chore (id, household_id, name, point_value, kind, status, name_updated_at, point_value_updated_at, kind_updated_at, status_updated_at) VALUES ('${seededChore.id}', '${seededChore.householdId}', '${seededChore.name}', ${seededChore.pointValue}, '${seededChore.kind}', '${seededChore.status}', '2026-01-01 00:00:00', '2026-01-01 00:00:00', '2026-01-01 00:00:00', '2026-01-01 00:00:00')"`,
+        { stdio: 'pipe' },
+      );
+    }
   }
 
   it('applies when the incoming updated_at is strictly greater', async () => {
