@@ -136,6 +136,10 @@ python tools/merge-review/tests/test_scenarios.py
 
 # QA-gate tests (AC parser, test runner, coverage, lint delta, end-to-end).
 python tools/merge-review/tests/test_qa_gate.py
+
+# Orchestrator tests: happy path (ready-to-merge comment + dashboard),
+# sad path (stale escalation + reassign), idempotence, threshold behavior.
+python -m unittest tools.merge-review.tests.test_orchestrator
 ```
 
 Three documented scenarios are covered:
@@ -146,7 +150,11 @@ Three documented scenarios are covered:
 | `trivial-auto-merge`| feature deletes a block, master edits a comment| `trivial-auto-merge` (rc=2) |
 | `real-conflict`     | both branches edit the same line               | `real-conflict` (rc=1)  |
 
-`build_fixtures.py` can be re-run with `--out <path>` to materialise the fixtures for manual experimentation.
+The orchestrator suite is `unittest`-based (15 tests). Together the three
+suites run 38 tests total — all should pass on a fresh checkout (`38 / 38 OK`).
+
+`build_fixtures.py` can be re-run with `--out <path>` to materialise the
+scenarios fixtures for manual experimentation.
 
 ## Trigger scheduler (`trigger.py`)
 
@@ -235,6 +243,88 @@ A single `--once` pass against a board with at least two `done` cards whose
 and updates both cards' `review_status` metadata field plus comments within
 the polling window. The state file then ensures subsequent passes are
 no-ops until the next card transitions to `done`.
+
+## Orchestrator (`orchestrator.py`)
+
+The orchestrator is the part of the pipeline that runs **after** `trigger.py`
+writes `review_status`. It owns the post-verdict state machine:
+
+```
+                              trigger.py writes review_status
+                                          ↓
+    clean-merge / trivial-auto-merge (and QA pass) ──→  ready-to-merge
+                                                            ↓
+                                            orchestrator posts MERGE comment
+                                            + one-click squash/preview scripts
+                                                            ↓
+                       qa-fail / real-conflict / error ───→  conflict / blocked
+                                                                ↓
+                                                       (24h idle threshold)
+                                                                ↓
+                                                  orchestrator posts stale
+                                                  escalation comment + reassigns
+                                                  card to `human-reviewer`
+```
+
+The orchestrator is a small dependency-free CLI. It shells out to the same
+`hermes kanban` commands trigger.py uses, but stages them across three sub-commands
+so each can be cron'd, tested, or hand-invoked independently:
+
+```bash
+# Post the one-click MERGE comment + refresh the dashboard
+python tools/merge-review/orchestrator.py ready
+
+# Rebuild docs/merge-review-dashboard.md from the current board state
+python tools/merge-review/orchestrator.py dashboard
+
+# Escalate cards stuck in conflict/qa-fail/error for more than 24h
+python tools/merge-review/orchestrator.py escalate
+
+# Single-pass convenience wrapper: ready + dashboard + escalate
+python tools/merge-review/orchestrator.py run-once
+```
+
+Per-card side-effects are tagged with HTML markers so re-runs are no-ops:
+
+| Marker                                 | Posted by                                            |
+| ---                                    | ---                                                  |
+| `<!-- orchestrator:ready-to-merge -->` | `stage_ready` — only when `review_status` ∈ {clean-merge, trivial-auto-merge} AND QA pass (or QA skipped) |
+| `<!-- orchestrator:stale-escalation -->` | `escalate_stale_cards` — only when `review_status` ∈ {real-conflict, qa-fail, error} AND `age ≥ threshold_hours` |
+
+### Configuration (env vars)
+
+| Env var                          | Default                                      |
+| ---                              | ---                                          |
+| `KANBAN_BOARD`                   | `chorehero`                                  |
+| `MERGE_REVIEW_DASHBOARD`         | `<repo>/docs/merge-review-dashboard.md`      |
+| `MERGE_REVIEW_STALE_HOURS`       | `24`                                         |
+| `MERGE_REVIEW_HUMAN_ASSIGNEE`    | `human-reviewer`                             |
+
+### Exit codes
+
+| Code | Meaning |
+| --- | --- |
+| 0 | All stages succeeded for every candidate the orchestrator inspected |
+| 1 | At least one card failed (kanban CLI non-zero, `comment` writeback refused, etc.) |
+
+### Acceptance
+
+A single `orchestrator.py run-once` against a board with one `clean-merge`
+card + one `real-conflict` card aged past the threshold:
+
+1. Posts the ready-to-merge comment on the clean card (comment carries the
+   exact `git merge --squash` / `--no-ff` commands + a `--stat` preview block).
+2. Posts a stale-escalation comment on the aged conflict card (with a JSON
+   conflict-report payload inline) and reassigns the card to the
+   `human-reviewer` profile.
+3. Rewrites `docs/merge-review-dashboard.md` to reflect the current state of
+   every card with a verdict (rolling last-10).
+
+The `tests/test_orchestrator.py` suite (15 tests) covers this end-to-end with
+an in-memory fake kanban client, including idempotence (no double-posting
+when markers are present) and the threshold / per-config behaviour.
+`tests/test_scenarios.py` and `tests/test_qa_gate.py` cover the upstream
+runner and QA gate that the orchestrator sits on top of.
 
 ## Dependencies
 
