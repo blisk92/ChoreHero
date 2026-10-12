@@ -133,11 +133,11 @@ describe('POST /api/sync/apply (LWW)', () => {
       // In CI, use mysql CLI directly against the service container.
       // First ensure the required household exists (FK prerequisite).
       execSync(
-        `mysql -h 127.0.0.1 -uroot -prootpw chorehero -e "INSERT IGNORE INTO household (id, name, created_at, updated_at) VALUES ('h-test-1', 'Test Household', '2026-01-01 00:00:00', '2026-01-01 00:00:00')"`,
+        `mysql -h 127.0.0.1 -uroot -prootpw chorehero -e "INSERT IGNORE INTO household (id, name, timezone) VALUES ('h-test-1', 'Test Household', 'UTC')"`,
         { stdio: 'pipe' },
       );
       execSync(
-        `mysql -h 127.0.0.1 -uroot -prootpw chorehero -e "INSERT IGNORE INTO chore (id, household_id, name, point_value, kind, status, name_updated_at, point_value_updated_at, kind_updated_at, status_updated_at) VALUES ('ch-test-1', 'h-test-1', 'Make bed', 10, 'recurring', 'pool', '2026-01-01 00:00:00', '2026-01-01 00:00:00', '2026-01-01 00:00:00', '2026-01-01 00:00:00')"`,
+        `mysql -h 127.0.0.1 -uroot -prootpw chorehero -e "INSERT IGNORE INTO chore (id, household_id, name, point_value, kind, status, created_at, archived_at, name_updated_at, point_value_updated_at, kind_updated_at, status_updated_at) VALUES ('ch-test-1', 'h-test-1', 'Make bed', 10, 'recurring', 'pool', '2026-01-01 00:00:00', NULL, '2026-01-01 00:00:00', '2026-01-01 00:00:00', '2026-01-01 00:00:00', '2026-01-01 00:00:00')"`,
         { stdio: 'pipe' },
       );
     } else {
