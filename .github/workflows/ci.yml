@@ -111,10 +111,7 @@ jobs:
           DATABASE_URL: mysql://root:rootpw@127.0.0.1:3306/chorehero
 
       - name: Build
-        run: |
-          cd api && pnpm tsc -p tsconfig.json --listEmittedFiles 2>&1
-          echo "=== ls -la dist/src/sync/ 2>/dev/null || echo NOT FOUND ==="
-          ls -la dist/src/sync/ 2>/dev/null || echo "NOT FOUND"
+        run: cd api && pnpm build
         env:
           DATABASE_URL: mysql://root:rootpw@127.0.0.1:3306/chorehero
 
