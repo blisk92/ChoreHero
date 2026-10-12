@@ -113,8 +113,12 @@ jobs:
       - name: Build
         run: |
           cd api && pnpm build
-          ls -la dist/src/sync/ 2>/dev/null || echo "dist/src/sync/ NOT FOUND"
-          ls -la src/sync/ | head -5
+          echo "=== git ls-files src/sync/ ==="
+          git ls-files src/sync/
+          echo "=== ls -la src/sync/ ==="
+          ls -la src/sync/
+          echo "=== ls -la dist/src/sync/ 2>/dev/null || echo NOT FOUND ==="
+          ls -la dist/src/sync/ 2>/dev/null || echo "NOT FOUND"
         env:
           DATABASE_URL: mysql://root:rootpw@127.0.0.1:3306/chorehero
 
