@@ -155,7 +155,7 @@ describe('POST /api/sync/apply (LWW)', () => {
     // a fixed port via env instead. Set PORT in beforeAll above to a known
     // value.
     // For simplicity here, we'll instead use the LWW function directly.
-    const { applyLww } = await import('../src/sync/lww.js');
+    const { applyLww } = await import('../../dist/src/sync/lww.js');
     const { PrismaClient } = await import('@prisma/client');
     const prisma = new PrismaClient({ datasourceUrl: process.env.DATABASE_URL });
     try {
@@ -173,7 +173,7 @@ describe('POST /api/sync/apply (LWW)', () => {
   }, 30_000);
 
   it('refuses an older write', async () => {
-    const { applyLww } = await import('../src/sync/lww.js');
+    const { applyLww } = await import('../../dist/src/sync/lww.js');
     const { PrismaClient } = await import('@prisma/client');
     const prisma = new PrismaClient({ datasourceUrl: process.env.DATABASE_URL });
     try {
@@ -196,7 +196,7 @@ describe('POST /api/sync/apply (LWW)', () => {
   }, 30_000);
 
   it('rejects unknown fields', async () => {
-    const { applyLww } = await import('../src/sync/lww.js');
+    const { applyLww } = await import('../../dist/src/sync/lww.js');
     const { PrismaClient } = await import('@prisma/client');
     const prisma = new PrismaClient({ datasourceUrl: process.env.DATABASE_URL });
     try {
