@@ -1,0 +1,217 @@
+/* =====================================================================
+   ChoreHero v1 — Design Tokens (CSS Custom Properties)
+   Companion to tokens/tokens.json. Use these names directly in components.
+   Do not redefine; if a value is wrong, fix tokens.json and regenerate.
+
+   Naming: --ch-{category}-{role} or --ch-{category}-{role}-{variant}
+   The ch- prefix prevents collisions with vendor CSS (Vuetify, etc.).
+   ===================================================================== */
+
+:root {
+  /* --- Brand: violet ----------------------------------------------- */
+  --ch-color-brand-violet-900: #1A0B3D;
+  --ch-color-brand-violet-800: #2D1B5E;
+  --ch-color-brand-violet-700: #3F2A8C;
+  --ch-color-brand-violet-600: #5538B8;
+  --ch-color-brand-violet-500: #7B5FE0;
+  --ch-color-brand-violet-300: #B8A8F0;
+  --ch-color-brand-violet-100: #EDE7FF;
+  --ch-color-brand-violet-050: #F7F4FF;
+
+  /* --- Accent: sunshine yellow ------------------------------------- */
+  --ch-color-accent-sunshine-500: #FFD400;
+  --ch-color-accent-sunshine-400: #FFE066;
+  --ch-color-accent-sunshine-200: #FFF3A8;
+
+  /* --- Neutrals: ink + paper --------------------------------------- */
+  --ch-color-neutral-ink-900: #0F0B1A;
+  --ch-color-neutral-ink-700: #2A2438;
+  --ch-color-neutral-ink-500: #6B6478;
+  --ch-color-neutral-ink-300: #B5B0C0;
+  --ch-color-neutral-ink-100: #E8E5EE;
+  --ch-color-neutral-paper-000: #FFFFFF;
+  --ch-color-neutral-paper-050: #FAF9FC;
+  --ch-color-neutral-paper-100: #F3F0F7;
+
+  /* --- Semantic ---------------------------------------------------- */
+  --ch-color-success-600: #1F8A4C;
+  --ch-color-success-100: #E3F5EA;
+  --ch-color-warning-600: #B86E00;
+  --ch-color-warning-100: #FFF1D6;
+  --ch-color-danger-600: #C2362F;
+  --ch-color-danger-500: #D9544C;
+  --ch-color-danger-100: #FBE5E3;
+  --ch-color-info-600: #1B6FA8;
+
+  /* --- Surfaces (semantic color roles) ----------------------------- */
+  /* App-level surfaces */
+  --ch-surface-app-kid:          var(--ch-color-brand-violet-050);
+  --ch-surface-app-parent:       var(--ch-color-neutral-paper-050);
+  --ch-surface-card:             var(--ch-color-neutral-paper-000);
+  --ch-surface-card-tinted:      var(--ch-color-brand-violet-100);
+  --ch-surface-card-hero:        var(--ch-color-brand-violet-600);
+  --ch-surface-overlay:          rgba(15, 11, 26, 0.55);
+  --ch-surface-skeleton:         var(--ch-color-neutral-paper-100);
+
+  /* --- Text roles -------------------------------------------------- */
+  --ch-text-primary:             var(--ch-color-neutral-ink-900);
+  --ch-text-secondary:           var(--ch-color-neutral-ink-700);
+  --ch-text-tertiary:            var(--ch-color-neutral-ink-500);
+  --ch-text-disabled:            var(--ch-color-neutral-ink-300);
+  --ch-text-on-brand:            var(--ch-color-neutral-paper-000);
+  --ch-text-on-accent:           var(--ch-color-neutral-ink-900);
+  --ch-text-on-success:          var(--ch-color-neutral-paper-000);
+  --ch-text-on-danger:           var(--ch-color-neutral-paper-000);
+  --ch-text-link:                var(--ch-color-brand-violet-600);
+
+  /* --- Borders ----------------------------------------------------- */
+  --ch-border-default:           var(--ch-color-neutral-ink-100);
+  --ch-border-strong:            var(--ch-color-neutral-ink-300);
+  --ch-border-focus:             var(--ch-color-brand-violet-600);
+  --ch-border-danger:            var(--ch-color-danger-600);
+  --ch-border-success:           var(--ch-color-success-600);
+
+  /* --- Spacing (4dp grid) ----------------------------------------- */
+  --ch-space-0:  0;
+  --ch-space-1:  4px;
+  --ch-space-2:  8px;
+  --ch-space-3:  12px;
+  --ch-space-4:  16px;
+  --ch-space-5:  20px;
+  --ch-space-6:  24px;
+  --ch-space-7:  32px;
+  --ch-space-8:  40px;
+  --ch-space-9:  48px;
+  --ch-space-10: 64px;
+  --ch-space-11: 80px;
+
+  /* --- Semantic spacing ------------------------------------------- */
+  --ch-space-card-padding:           var(--ch-space-4);
+  --ch-space-card-padding-compact:   var(--ch-space-3);
+  --ch-space-section-gap:            var(--ch-space-6);
+  --ch-space-form-field-gap:         var(--ch-space-4);
+  --ch-space-inline-gap:             var(--ch-space-2);
+  --ch-space-touch-target-padding:   var(--ch-space-3);
+  --ch-space-screen-padding-x:       var(--ch-space-5);
+  --ch-space-screen-padding-x-wide:  var(--ch-space-7);
+  --ch-space-screen-padding-y:       var(--ch-space-5);
+  --ch-space-modal-padding:          var(--ch-space-6);
+  --ch-space-nav-height-compact:     var(--ch-space-9);
+  --ch-space-nav-height-tall:        var(--ch-space-10);
+
+  /* --- Radii ------------------------------------------------------- */
+  --ch-radius-xs:   4px;
+  --ch-radius-sm:   8px;
+  --ch-radius-md:   12px;
+  --ch-radius-lg:   16px;
+  --ch-radius-xl:   24px;
+  --ch-radius-pill: 999px;
+
+  --ch-radius-card:        var(--ch-radius-lg);
+  --ch-radius-card-hero:   var(--ch-radius-xl);
+  --ch-radius-button:      var(--ch-radius-md);
+  --ch-radius-input:       var(--ch-radius-sm);
+  --ch-radius-chip:        var(--ch-radius-pill);
+  --ch-radius-modal:       var(--ch-radius-xl);
+  --ch-radius-avatar:      var(--ch-radius-pill);
+  --ch-radius-toast:       var(--ch-radius-md);
+
+  /* --- Shadows ----------------------------------------------------- */
+  --ch-shadow-0:   none;
+  --ch-shadow-1:   0 1px 2px rgba(15, 11, 26, 0.06), 0 1px 3px rgba(15, 11, 26, 0.08);
+  --ch-shadow-2:   0 4px 8px rgba(15, 11, 26, 0.08), 0 2px 4px rgba(15, 11, 26, 0.06);
+  --ch-shadow-3:   0 12px 24px rgba(15, 11, 26, 0.10), 0 4px 8px rgba(15, 11, 26, 0.08);
+  --ch-shadow-brand: 0 8px 20px rgba(85, 56, 184, 0.20), 0 2px 4px rgba(85, 56, 184, 0.12);
+
+  --ch-shadow-card-resting: var(--ch-shadow-1);
+  --ch-shadow-card-hover:   var(--ch-shadow-2);
+  --ch-shadow-modal:        var(--ch-shadow-3);
+  --ch-shadow-toast:        var(--ch-shadow-3);
+  --ch-shadow-cta-primary:  var(--ch-shadow-brand);
+
+  /* --- Typography -------------------------------------------------- */
+  --ch-font-primary:    'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ch-font-display-kid: 'Fraunces', 'Inter', serif;
+  --ch-font-mono:       'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+
+  /* Scale: name → {font-size, line-height, weight, letter-spacing} */
+  --ch-text-display-lg:  700 48px/1.05 -0.02em var(--ch-font-primary);
+  --ch-text-display-md:  700 36px/1.10 -0.015em var(--ch-font-primary);
+  --ch-text-title-lg:    700 28px/1.20 -0.01em var(--ch-font-primary);
+  --ch-text-title-md:    600 22px/1.25 -0.005em var(--ch-font-primary);
+  --ch-text-title-sm:    600 18px/1.30 0 var(--ch-font-primary);
+  --ch-text-body-lg:     400 17px/1.50 0 var(--ch-font-primary);
+  --ch-text-body-md:     400 15px/1.55 0 var(--ch-font-primary);
+  --ch-text-body-sm:     400 13px/1.45 0.01em var(--ch-font-primary);
+  --ch-text-label-lg:    600 15px/1.40 0.005em var(--ch-font-primary);
+  --ch-text-label-md:    600 13px/1.35 0.01em var(--ch-font-primary);
+  --ch-text-label-sm:    600 11px/1.30 0.04em var(--ch-font-primary);
+  --ch-text-code-lg:     600 32px/1.20 0.08em var(--ch-font-mono);
+
+  /* --- Motion ------------------------------------------------------ */
+  --ch-duration-instant: 0ms;
+  --ch-duration-fast:    120ms;
+  --ch-duration-base:    180ms;
+  --ch-duration-slow:    260ms;
+  --ch-duration-celebrate: 420ms;
+  --ch-easing-standard:    cubic-bezier(0.2, 0.0, 0.2, 1);
+  --ch-easing-emphasized:  cubic-bezier(0.2, 0.0, 0, 1);
+  --ch-easing-exit:        cubic-bezier(0.4, 0.0, 1, 1);
+
+  /* --- z-index ----------------------------------------------------- */
+  --ch-z-base:         0;
+  --ch-z-raised:       10;
+  --ch-z-sticky:       100;
+  --ch-z-dropdown:     200;
+  --ch-z-toast:        800;
+  --ch-z-modal:        900;
+  --ch-z-modal-nested: 950;
+  --ch-z-celebration:  1000;
+
+  /* --- Breakpoints (consumed via @media, here as comment reference) -*/
+  /* --ch-bp-sm:  480px   large phones                                  */
+  /* --ch-bp-md:  768px   tablets; parent nav becomes rail              */
+  /* --ch-bp-lg:  1024px  desktop; two-column layouts unlock            */
+  /* --ch-bp-xl:  1280px  wide desktop                                  */
+
+  /* --- Touch targets ----------------------------------------------- */
+  --ch-touch-min:          44px;
+  --ch-touch-min-kid:      56px;
+  --ch-touch-recommended-kid: 64px;
+  --ch-touch-spacing:       8px;
+
+  /* --- Focus ring ------------------------------------------------- */
+  --ch-focus-ring-width:    3px;
+  --ch-focus-ring-offset:   2px;
+  --ch-focus-ring-color:    var(--ch-color-brand-violet-600);
+  --ch-focus-ring-shadow:   0 0 0 var(--ch-focus-ring-offset) var(--ch-color-neutral-paper-000),
+                            0 0 0 calc(var(--ch-focus-ring-offset) + var(--ch-focus-ring-width)) var(--ch-focus-ring-color);
+}
+
+/* prefers-reduced-motion: clamp durations to zero, switch to linear. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ch-duration-fast: 0ms;
+    --ch-duration-base: 0ms;
+    --ch-duration-slow: 0ms;
+    --ch-duration-celebrate: 0ms;
+    --ch-easing-standard:   linear;
+    --ch-easing-emphasized: linear;
+    --ch-easing-exit:       linear;
+  }
+}
+
+/* Forced-colors / Windows High Contrast: keep borders visible, drop
+   decorative shadows. Component authors must also add equivalent
+   `forced-colors` adjustments per-component when a brand background
+   is the only signal. */
+@media (forced-colors: active) {
+  :root {
+    --ch-shadow-1: none;
+    --ch-shadow-2: none;
+    --ch-shadow-3: none;
+    --ch-shadow-brand: none;
+    --ch-color-brand-violet-600: ButtonText;
+    --ch-color-brand-violet-100: Canvas;
+  }
+}
