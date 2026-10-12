@@ -112,11 +112,7 @@ jobs:
 
       - name: Build
         run: |
-          cd api && pnpm build
-          echo "=== git ls-files src/sync/ ==="
-          git ls-files src/sync/
-          echo "=== ls -la src/sync/ ==="
-          ls -la src/sync/
+          cd api && pnpm tsc -p tsconfig.json --listEmittedFiles 2>&1
           echo "=== ls -la dist/src/sync/ 2>/dev/null || echo NOT FOUND ==="
           ls -la dist/src/sync/ 2>/dev/null || echo "NOT FOUND"
         env:
