@@ -23,3 +23,5 @@ Thumbs.db
 # merge-review runtime artifacts
 /tools/merge-review/__pycache__/
 /tools/merge-review/tests/__pycache__/
+/tools/merge-review/.trigger-state.json
+/tools/merge-review/.trigger-state.json.corrupt

@@ -148,6 +148,94 @@ Three documented scenarios are covered:
 
 `build_fixtures.py` can be re-run with `--out <path>` to materialise the fixtures for manual experimentation.
 
+## Trigger scheduler (`trigger.py`)
+
+The trigger polls the Kanban board for cards that have just transitioned to
+`done` with a git worktree reference, and runs `merge_review.py` against each
+new candidate. It is the watch-and-dispatch loop that turns "card is done"
+into "card has a review_status".
+
+### How a card is picked up
+
+1. Every `TRIGGER_INTERVAL_SEC` the trigger runs `hermes kanban list --status done --json`.
+2. For each card it checks two possible sources of a worktree reference:
+   - `task.branch_name` (set when the card was originally dispatched onto a worktree).
+   - The most recent completed run's `metadata.branch` (set by the worker).
+3. The branch must resolve as a real local branch in `GIT_REPO_PATH` (`git for-each-ref refs/heads`). Phantom branch names are silently skipped.
+4. Cards the trigger has already reviewed (per `STATE_FILE`) are skipped, so a `done` card gets at most one review unless `--card` forces it.
+
+### What the trigger does, per card
+
+1. Creates a fresh worktree at `<REVIEW_WORKTREE_ROOT>/<task_id>` on top of `<MERGE_REVIEW_BASE>` (default `master`). If a stale worktree or `merge-review/<base>` branch is left over from a prior run, it is pruned first so each run starts clean.
+2. Invokes `merge_review.py` as a subprocess, captures stdout/stderr/exit code, and parses the JSON report from `--report`.
+3. Records the verdict (`clean-merge`, `trivial-auto-merge`, `real-conflict`, `error`, `qa-fail`) in the local state file under `reviewed[<task_id>].review_status`.
+4. Writes `review_status` (plus `review_branch`, `review_base_branch`, `review_exit_code`, `review_worktree_path`, `review_conflicts`, `review_auto_resolved_files`, `review_manual_conflict_files`, `review_notes`, `review_reviewed_at`) back to the card's latest-completed-run metadata via `hermes kanban edit --metadata`. The existing `task.result` is read back and re-passed unchanged so the original worker's handoff stays intact.
+5. Posts a Markdown comment summarising the verdict and the raw JSON report (truncated to 12 KB).
+
+### Invocation
+
+```bash
+# One polling pass (cron-friendly, default if no mode flag is given):
+python tools/merge-review/trigger.py --once
+
+# Foreground daemon — polls every TRIGGER_INTERVAL_SEC:
+python tools/merge-review/trigger.py --watch
+
+# Force-review one specific card (bypasses the state-file dedupe):
+python tools/merge-review/trigger.py --card t_abc123
+```
+
+CLI flags (each overrides the matching env var):
+
+| Flag | Env var | Default |
+| --- | --- | --- |
+| `--board` | `KANBAN_BOARD` | `chorehero` |
+| `--repo` | `GIT_REPO_PATH` | `<script-dir>/../..` (the ChoreHero repo root) |
+| `--base` | `MERGE_REVIEW_BASE` | `master` |
+| `--interval` | `TRIGGER_INTERVAL_SEC` | `900` (15 min) |
+| `--state-file` | `STATE_FILE` | `<script-dir>/.trigger-state.json` |
+| _(positional)_ | `REVIEW_WORKTREE_ROOT` | `<GIT_REPO_PATH>/.worktrees/review` |
+| _(positional)_ | `MERGE_REVIEW_BIN` | `<script-dir>/merge_review.py` |
+
+`KBOARD_TOKEN` is reserved for future HTTP-mode use; the trigger currently
+talks to Kanban via the `hermes kanban` CLI and inherits the profile's local
+auth, so no token is needed in the local-CLI path.
+
+### Schedule format
+
+`TRIGGER_INTERVAL_SEC` is an integer number of seconds. The trigger itself
+does not register itself with a scheduler — it only knows how to sleep
+between passes (`--watch`) or run once (`--once`). To schedule it on a real
+clock, wrap it in whatever your host uses:
+
+```bash
+# crontab — every 15 minutes
+*/15 * * * * cd /path/to/ChoreHero && python tools/merge-review/trigger.py --once
+
+# systemd timer / launchd — invoke the same `--once` command on the wall clock.
+
+# Docker / k8s — run `trigger.py --once` as a periodic Job/CronJob.
+```
+
+For a true daemon (no scheduler), `python tools/merge-review/trigger.py --watch`
+will foreground-loop and print one line per pass; Ctrl+C to stop.
+
+### Exit codes
+
+| Code | Meaning |
+| --- | --- |
+| `0` | All candidates processed successfully (or there were none) |
+| `1` | At least one card failed review processing (a verdict of `error`) |
+| `2` | Internal error (config, missing CLI, not a git repo) |
+
+### Acceptance
+
+A single `--once` pass against a board with at least two `done` cards whose
+`branch_name` resolves locally produces exactly one review job per candidate
+and updates both cards' `review_status` metadata field plus comments within
+the polling window. The state file then ensures subsequent passes are
+no-ops until the next card transitions to `done`.
+
 ## Dependencies
 
 - Python 3.10+ (uses `subprocess`, `dataclasses`, `pathlib`; no third-party packages).
