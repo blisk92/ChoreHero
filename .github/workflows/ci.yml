@@ -1,0 +1,157 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - 'tools/merge-review/**'
+      - 'docs/**'
+  pull_request:
+    branches: [master]
+    paths-ignore:
+      - 'tools/merge-review/**'
+      - 'docs/**'
+
+jobs:
+  # -----------------------------------------------------------------------
+  # 1. Prisma migration smoke test — runs migrate deploy + migrate status
+  #    against a real MariaDB 11.8 service container.
+  # -----------------------------------------------------------------------
+  prisma-migrate-smoke:
+    name: Prisma Migration Smoke
+    runs-on: ubuntu-latest
+
+    services:
+      mariadb:
+        image: mariadb:11.8
+        env:
+          MARIADB_ROOT_PASSWORD: rootpw
+          MARIADB_DATABASE: chorehero
+        options: >-
+          --health-cmd "mariadb -uroot -prootpw -e 'SELECT 1'"
+          --health-interval 10s
+          --health-retries 5
+          --health-timeout 5s
+        ports:
+          - 3306:3306
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        env:
+          DATABASE_URL: mysql://root:rootpw@127.0.0.1:3306/chorehero
+
+      - name: Prisma migrate deploy
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: mysql://root:rootpw@127.0.0.1:3306/chorehero
+
+      - name: Prisma migrate status
+        run: npx prisma migrate status
+        env:
+          DATABASE_URL: mysql://root:rootpw@127.0.0.1:3306/chorehero
+
+  # -----------------------------------------------------------------------
+  # 2. API contract tests — runs vitest contract test suite against MariaDB.
+  # -----------------------------------------------------------------------
+  api-contract:
+    name: API Contract Tests
+    runs-on: ubuntu-latest
+
+    services:
+      mariadb:
+        image: mariadb:11.8
+        env:
+          MARIADB_ROOT_PASSWORD: rootpw
+          MARIADB_DATABASE: chorehero
+        options: >-
+          --health-cmd "mariadb -uroot -prootpw -e 'SELECT 1'"
+          --health-interval 10s
+          --health-retries 5
+          --health-timeout 5s
+        ports:
+          - 3306:3306
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        env:
+          DATABASE_URL: mysql://root:rootpw@127.0.0.1:3306/chorehero
+
+      - name: Prisma migrate deploy
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: mysql://root:rootpw@127.0.0.1:3306/chorehero
+
+      - name: Prisma generate
+        run: npx prisma generate
+        env:
+          DATABASE_URL: mysql://root:rootpw@127.0.0.1:3306/chorehero
+
+      - name: Run contract tests
+        run: pnpm --filter api test:contract
+        env:
+          DATABASE_URL: mysql://root:rootpw@127.0.0.1:3306/chorehero
+
+  # -----------------------------------------------------------------------
+  # 3. Lint — runs pnpm lint at the monorepo root.
+  #    Skipped until the frontend SPAs land (M3). Set `if: false` to skip;
+  #    remove the condition or set `if: true` once M3 ships.
+  # -----------------------------------------------------------------------
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    # TODO (M3): remove `if: false` once frontend SPAs are on master.
+    if: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run lint
+        run: pnpm lint

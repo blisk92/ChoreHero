@@ -1,5 +1,7 @@
 # ChoreHero API
 
+[![CI](https://github.com/blisk92/ChoreHero/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/blisk92/ChoreHero/actions/workflows/ci.yml)
+
 Node 20 / Express 4 / Prisma 5 / `ws`. v1-01 ships only the per-field LWW sync
 primitive and the WebSocket upgrade lifecycle. Auth, OAuth, household, child,
 chore, reward, redemption, and ledger endpoints land in v1-02 through v1-08.
