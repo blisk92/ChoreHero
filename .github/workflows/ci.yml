@@ -111,7 +111,7 @@ jobs:
           DATABASE_URL: mysql://root:rootpw@127.0.0.1:3306/chorehero
 
       - name: Run contract tests
-        run: cd api && CI=false pnpm test:contract
+        run: cd api && pnpm test:contract
         env:
           DATABASE_URL: mysql://root:rootpw@127.0.0.1:3306/chorehero
 

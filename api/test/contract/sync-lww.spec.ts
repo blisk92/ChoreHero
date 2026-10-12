@@ -63,6 +63,18 @@ function httpPost(port: number, path: string, body: unknown): Promise<{ status: 
 }
 
 beforeAll(async () => {
+  // In CI (GitHub Actions service container environment), Docker's own container
+  // cannot publish ports to the host because CI=true is set by the runner.
+  // Skip the docker-dependent setup and let the test use the pre-booted MariaDB
+  // service from the workflow job (already on 127.0.0.1:3306).
+  if (process.env.CI === 'true') {
+    process.env.DATABASE_URL = `mysql://root:rootpw@127.0.0.1:3306/chorehero`;
+    process.env.PORT = '0';
+    process.env.NODE_ENV = 'test';
+    await import('../src/index.js');
+    return;
+  }
+
   const tmp = mkdtempSync(join(tmpdir(), 'chorehero-mariadb-'));
   containerId = execSync(
     `docker run --rm -d ` +
