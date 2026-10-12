@@ -7,6 +7,8 @@ import { WebSocketServer } from 'ws';
 import { PrismaClient } from '@prisma/client';
 import { mountSyncRoutes } from './sync/lww.js';
 import { mountAuthRoutes } from './auth/routes.js';
+import { mountOAuthRoutes } from './auth/oauth.js';
+import { mountChildrenRoutes } from './households/children.js';
 import { loadJwtConfig } from './auth/jwt.js';
 
 const PORT = Number.parseInt(process.env.PORT ?? '3000', 10);
@@ -32,6 +34,8 @@ app.get('/api/health', (_req, res) => {
 });
 
 mountAuthRoutes(app, prisma, jwtConfig);
+mountOAuthRoutes(app, prisma, jwtConfig);
+mountChildrenRoutes(app, prisma, jwtConfig);
 mountSyncRoutes(app, prisma);
 
 const server = http.createServer(app);
