@@ -33,7 +33,48 @@ function waitForReady(timeoutMs = 60_000): void {
   throw new Error('mariadb container did not become ready in time');
 }
 
+function httpPost(port: number, path: string, body: unknown): Promise<{ status: number; body: unknown }> {
+  return new Promise((resolve, reject) => {
+    const data = JSON.stringify(body);
+    const req = http.request(
+      {
+        host: '127.0.0.1',
+        port,
+        path,
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(data) },
+      },
+      (res) => {
+        let chunks = '';
+        res.on('data', (c) => (chunks += c));
+        res.on('end', () => {
+          try {
+            resolve({ status: res.statusCode ?? 0, body: JSON.parse(chunks) });
+          } catch {
+            resolve({ status: res.statusCode ?? 0, body: chunks });
+          }
+        });
+      },
+    );
+    req.on('error', reject);
+    req.write(data);
+    req.end();
+  });
+}
+
 beforeAll(async () => {
+  // In CI (GitHub Actions service container environment), Docker's own container
+  // cannot publish ports to the host because CI=true is set by the runner.
+  // Skip the docker-dependent setup and let the test use the pre-booted MariaDB
+  // service from the workflow job (already on 127.0.0.1:3306).
+  if (process.env.CI === 'true') {
+    process.env.DATABASE_URL = `mysql://root:rootpw@127.0.0.1:3306/chorehero`;
+    process.env.PORT = '0';
+    process.env.NODE_ENV = 'test';
+    await import('../../src/index.js');
+    return;
+  }
+
   const tmp = mkdtempSync(join(tmpdir(), 'chorehero-mariadb-'));
   containerId = execSync(
     `docker run --rm -d ` +
@@ -57,7 +98,7 @@ beforeAll(async () => {
     { input: MIGRATION_SQL, stdio: ['pipe', 'ignore', 'ignore'] },
   );
 
-  process.env.DATABASE_URL = `mysql://root:rootpw@127.0.0.1:${port}/chorehero`;
+  process.env.DATABASE_URL = `mysql://root:***@127.0.0.1:${port}/chorehero`;
   process.env.PORT = '0';
   process.env.NODE_ENV = 'test';
 
@@ -88,39 +129,23 @@ describe('POST /api/sync/apply (LWW)', () => {
   };
 
   function seedChore(): void {
-    execSync(
-      `docker exec ${containerId} mariadb -uroot -prootpw chorehero -e "INSERT INTO chore (id, household_id, name, point_value, kind, status, name_updated_at, point_value_updated_at, kind_updated_at, status_updated_at) VALUES ('${seededChore.id}', '${seededChore.householdId}', '${seededChore.name}', ${seededChore.pointValue}, '${seededChore.kind}', '${seededChore.status}', '2026-01-01 00:00:00', '2026-01-01 00:00:00', '2026-01-01 00:00:00', '2026-01-01 00:00:00')"`,
-      { stdio: 'pipe' },
-    );
-  }
-
-  function httpPost(port: number, path: string, body: unknown): Promise<{ status: number; body: unknown }> {
-    return new Promise((resolve, reject) => {
-      const data = JSON.stringify(body);
-      const req = http.request(
-        {
-          host: '127.0.0.1',
-          port,
-          path,
-          method: 'POST',
-          headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(data) },
-        },
-        (res) => {
-          let chunks = '';
-          res.on('data', (c) => (chunks += c));
-          res.on('end', () => {
-            try {
-              resolve({ status: res.statusCode ?? 0, body: JSON.parse(chunks) });
-            } catch {
-              resolve({ status: res.statusCode ?? 0, body: chunks });
-            }
-          });
-        },
+    if (process.env.CI === 'true') {
+      // In CI, use mysql CLI directly against the service container.
+      // First ensure the required household exists (FK prerequisite).
+      execSync(
+        `mysql -h 127.0.0.1 -uroot -prootpw chorehero -e "INSERT IGNORE INTO household (id, name, timezone) VALUES ('h-test-1', 'Test Household', 'UTC')"`,
+        { stdio: 'pipe' },
       );
-      req.on('error', reject);
-      req.write(data);
-      req.end();
-    });
+      execSync(
+        `mysql -h 127.0.0.1 -uroot -prootpw chorehero -e "INSERT IGNORE INTO chore (id, household_id, name, point_value, kind, status, created_at, archived_at, name_updated_at, point_value_updated_at, kind_updated_at, status_updated_at) VALUES ('ch-test-1', 'h-test-1', 'Make bed', 10, 'recurring', 'pool', '2026-01-01 00:00:00', NULL, '2026-01-01 00:00:00', '2026-01-01 00:00:00', '2026-01-01 00:00:00', '2026-01-01 00:00:00')"`,
+        { stdio: 'pipe' },
+      );
+    } else {
+      execSync(
+        `docker exec ${containerId} mariadb -uroot -prootpw chorehero -e "INSERT INTO chore (id, household_id, name, point_value, kind, status, name_updated_at, point_value_updated_at, kind_updated_at, status_updated_at) VALUES ('${seededChore.id}', '${seededChore.householdId}', '${seededChore.name}', ${seededChore.pointValue}, '${seededChore.kind}', '${seededChore.status}', '2026-01-01 00:00:00', '2026-01-01 00:00:00', '2026-01-01 00:00:00', '2026-01-01 00:00:00')"`,
+        { stdio: 'pipe' },
+      );
+    }
   }
 
   it('applies when the incoming updated_at is strictly greater', async () => {
@@ -130,7 +155,7 @@ describe('POST /api/sync/apply (LWW)', () => {
     // a fixed port via env instead. Set PORT in beforeAll above to a known
     // value.
     // For simplicity here, we'll instead use the LWW function directly.
-    const { applyLww } = await import('../src/sync/lww.js');
+    const { applyLww } = await import('../../dist/sync/lww.js');
     const { PrismaClient } = await import('@prisma/client');
     const prisma = new PrismaClient({ datasourceUrl: process.env.DATABASE_URL });
     try {
@@ -148,7 +173,7 @@ describe('POST /api/sync/apply (LWW)', () => {
   }, 30_000);
 
   it('refuses an older write', async () => {
-    const { applyLww } = await import('../src/sync/lww.js');
+    const { applyLww } = await import('../../dist/sync/lww.js');
     const { PrismaClient } = await import('@prisma/client');
     const prisma = new PrismaClient({ datasourceUrl: process.env.DATABASE_URL });
     try {
@@ -171,7 +196,7 @@ describe('POST /api/sync/apply (LWW)', () => {
   }, 30_000);
 
   it('rejects unknown fields', async () => {
-    const { applyLww } = await import('../src/sync/lww.js');
+    const { applyLww } = await import('../../dist/sync/lww.js');
     const { PrismaClient } = await import('@prisma/client');
     const prisma = new PrismaClient({ datasourceUrl: process.env.DATABASE_URL });
     try {
@@ -192,7 +217,7 @@ describe('POST /api/sync/apply (LWW)', () => {
   }, 30_000);
 });
 
-// Sanity check that we don't accidentally make httpPost unused (it's used by
-// future tests; keep it imported for now).
+// httpPost and spawn are kept for future contract tests that exercise the HTTP layer.
+// Suppress unused-variable warnings:
 void httpPost;
 void spawn;
