@@ -71,7 +71,7 @@ beforeAll(async () => {
     process.env.DATABASE_URL = `mysql://root:rootpw@127.0.0.1:3306/chorehero`;
     process.env.PORT = '0';
     process.env.NODE_ENV = 'test';
-    await import('./src/index.js');
+    await import('../../src/index.js');
     return;
   }
 
