@@ -106,9 +106,13 @@ def _run_qa_gate(
     notes: list[str] = []
     master_lint: list[dict[str, Any]] = []
     master_wt: Path | None = None
+    master_root: Path | None = None
     try:
         # Build a tiny worktree on master to get its baseline lint findings.
-        master_wt = make_worktree(repo, base, Path(tempfile.mkdtemp(prefix="chorehero-qa-master-")))
+        # Use a single tmpdir so make_worktree() and remove_worktree() agree
+        # on the path layout (Path(root) / f"wt-{base}").
+        master_root = Path(tempfile.mkdtemp(prefix="chorehero-qa-master-"))
+        master_wt = make_worktree(repo, base, master_root)
         baseline_linters = discover_linters(repo)
         for binary, cfg, _hint in baseline_linters:
             for finding in run_linter(binary, master_wt, repo, cfg):
