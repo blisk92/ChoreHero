@@ -48,17 +48,17 @@ jobs:
         run: npm install -g pnpm@9
 
       - name: Install dependencies
-        run: pnpm install
+        run: cd api && pnpm install
         env:
           DATABASE_URL: mysql://root:rootpw@127.0.0.1:3306/chorehero
 
       - name: Prisma migrate deploy
-        run: npx prisma migrate deploy
+        run: cd api && npx prisma migrate deploy
         env:
           DATABASE_URL: mysql://root:rootpw@127.0.0.1:3306/chorehero
 
       - name: Prisma migrate status
-        run: npx prisma migrate status
+        run: cd api && npx prisma migrate status
         env:
           DATABASE_URL: mysql://root:rootpw@127.0.0.1:3306/chorehero
 
@@ -96,22 +96,22 @@ jobs:
         run: npm install -g pnpm@9
 
       - name: Install dependencies
-        run: pnpm install
+        run: cd api && pnpm install
         env:
           DATABASE_URL: mysql://root:rootpw@127.0.0.1:3306/chorehero
 
       - name: Prisma migrate deploy
-        run: npx prisma migrate deploy
+        run: cd api && npx prisma migrate deploy
         env:
           DATABASE_URL: mysql://root:rootpw@127.0.0.1:3306/chorehero
 
       - name: Prisma generate
-        run: npx prisma generate
+        run: cd api && npx prisma generate
         env:
           DATABASE_URL: mysql://root:rootpw@127.0.0.1:3306/chorehero
 
       - name: Run contract tests
-        run: pnpm --filter api test:contract
+        run: cd api && pnpm test:contract
         env:
           DATABASE_URL: mysql://root:rootpw@127.0.0.1:3306/chorehero
 
@@ -139,7 +139,7 @@ jobs:
         run: npm install -g pnpm@9
 
       - name: Install dependencies
-        run: pnpm install
+        run: cd api && pnpm install
 
       - name: Run lint
-        run: pnpm lint
+        run: cd api && pnpm lint
