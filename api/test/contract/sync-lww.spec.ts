@@ -33,6 +33,35 @@ function waitForReady(timeoutMs = 60_000): void {
   throw new Error('mariadb container did not become ready in time');
 }
 
+function httpPost(port: number, path: string, body: unknown): Promise<{ status: number; body: unknown }> {
+  return new Promise((resolve, reject) => {
+    const data = JSON.stringify(body);
+    const req = http.request(
+      {
+        host: '127.0.0.1',
+        port,
+        path,
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(data) },
+      },
+      (res) => {
+        let chunks = '';
+        res.on('data', (c) => (chunks += c));
+        res.on('end', () => {
+          try {
+            resolve({ status: res.statusCode ?? 0, body: JSON.parse(chunks) });
+          } catch {
+            resolve({ status: res.statusCode ?? 0, body: chunks });
+          }
+        });
+      },
+    );
+    req.on('error', reject);
+    req.write(data);
+    req.end();
+  });
+}
+
 beforeAll(async () => {
   const tmp = mkdtempSync(join(tmpdir(), 'chorehero-mariadb-'));
   containerId = execSync(
@@ -57,7 +86,7 @@ beforeAll(async () => {
     { input: MIGRATION_SQL, stdio: ['pipe', 'ignore', 'ignore'] },
   );
 
-  process.env.DATABASE_URL = `mysql://root:rootpw@127.0.0.1:${port}/chorehero`;
+  process.env.DATABASE_URL = `mysql://root:***@127.0.0.1:${port}/chorehero`;
   process.env.PORT = '0';
   process.env.NODE_ENV = 'test';
 
@@ -92,35 +121,6 @@ describe('POST /api/sync/apply (LWW)', () => {
       `docker exec ${containerId} mariadb -uroot -prootpw chorehero -e "INSERT INTO chore (id, household_id, name, point_value, kind, status, name_updated_at, point_value_updated_at, kind_updated_at, status_updated_at) VALUES ('${seededChore.id}', '${seededChore.householdId}', '${seededChore.name}', ${seededChore.pointValue}, '${seededChore.kind}', '${seededChore.status}', '2026-01-01 00:00:00', '2026-01-01 00:00:00', '2026-01-01 00:00:00', '2026-01-01 00:00:00')"`,
       { stdio: 'pipe' },
     );
-  }
-
-  function httpPost(port: number, path: string, body: unknown): Promise<{ status: number; body: unknown }> {
-    return new Promise((resolve, reject) => {
-      const data = JSON.stringify(body);
-      const req = http.request(
-        {
-          host: '127.0.0.1',
-          port,
-          path,
-          method: 'POST',
-          headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(data) },
-        },
-        (res) => {
-          let chunks = '';
-          res.on('data', (c) => (chunks += c));
-          res.on('end', () => {
-            try {
-              resolve({ status: res.statusCode ?? 0, body: JSON.parse(chunks) });
-            } catch {
-              resolve({ status: res.statusCode ?? 0, body: chunks });
-            }
-          });
-        },
-      );
-      req.on('error', reject);
-      req.write(data);
-      req.end();
-    });
   }
 
   it('applies when the incoming updated_at is strictly greater', async () => {
@@ -192,7 +192,7 @@ describe('POST /api/sync/apply (LWW)', () => {
   }, 30_000);
 });
 
-// Sanity check that we don't accidentally make httpPost unused (it's used by
-// future tests; keep it imported for now).
+// httpPost and spawn are kept for future contract tests that exercise the HTTP layer.
+// Suppress unused-variable warnings:
 void httpPost;
 void spawn;
