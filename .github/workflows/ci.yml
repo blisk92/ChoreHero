@@ -53,12 +53,12 @@ jobs:
           DATABASE_URL: mysql://root:rootpw@127.0.0.1:3306/chorehero
 
       - name: Prisma migrate deploy
-        run: npx prisma migrate deploy --schema prisma/schema.prisma
+        run: cd api && pnpm exec prisma migrate deploy --schema ../prisma/schema.prisma
         env:
           DATABASE_URL: mysql://root:rootpw@127.0.0.1:3306/chorehero
 
       - name: Prisma migrate status
-        run: npx prisma migrate status --schema prisma/schema.prisma
+        run: cd api && pnpm exec prisma migrate status --schema ../prisma/schema.prisma
         env:
           DATABASE_URL: mysql://root:rootpw@127.0.0.1:3306/chorehero
 
@@ -101,12 +101,12 @@ jobs:
           DATABASE_URL: mysql://root:rootpw@127.0.0.1:3306/chorehero
 
       - name: Prisma migrate deploy
-        run: npx prisma migrate deploy --schema prisma/schema.prisma
+        run: cd api && pnpm exec prisma migrate deploy --schema ../prisma/schema.prisma
         env:
           DATABASE_URL: mysql://root:rootpw@127.0.0.1:3306/chorehero
 
       - name: Prisma generate
-        run: npx prisma generate --schema prisma/schema.prisma
+        run: cd api && pnpm exec prisma generate --schema ../prisma/schema.prisma
         env:
           DATABASE_URL: mysql://root:rootpw@127.0.0.1:3306/chorehero
 
